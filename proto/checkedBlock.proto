@@ -1,0 +1,9 @@
+syntax = "proto3";
+package checkedBlock;
+import "proto/transaction.proto";
+option go_package = "/proto";
+
+message CheckedBlock {
+    repeated  transaction.Transaction  Transactions = 1;
+    // may be add bls sign here
+} 

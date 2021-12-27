@@ -1,0 +1,24 @@
+syntax = "proto3";
+package message;
+option go_package = "/proto";
+
+message Header {
+    string Id = 1;
+    string Type = 2;
+    string From = 3; 
+    string Command = 4;
+    int64 StatusCode = 5;
+    int64 Time = 6;
+    int32 TotalReceived = 7;
+    int32 TotalPackage = 8;
+}
+
+message Message {
+    Header Header = 1;
+    bytes body = 2;
+}
+
+message InitConnection {
+    string Address = 1;
+    string Type = 2;
+}

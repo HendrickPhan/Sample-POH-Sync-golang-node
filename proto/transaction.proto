@@ -1,0 +1,12 @@
+syntax = "proto3";
+package transaction;
+option go_package = "/proto";
+
+message Transaction {
+    string Hash = 1;
+    string LastHash = 2;
+    string From = 3;
+    string To = 4;
+    int64  Balance = 5;
+    string Sign = 6;
+}

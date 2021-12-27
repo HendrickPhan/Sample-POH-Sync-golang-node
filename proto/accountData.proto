@@ -1,0 +1,8 @@
+syntax = "proto3";
+package accountData;
+option go_package = "/proto";
+
+message AccountData {
+    string Address = 1;
+    string LastHash = 2;
+}

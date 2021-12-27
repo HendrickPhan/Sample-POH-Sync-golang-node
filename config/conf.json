@@ -1,0 +1,20 @@
+{
+    "address": "address1",
+    "ip": "127.0.0.1",
+    "port": 3001,
+    "node_type": "Validator",
+    "hash_per_second": 1600,
+    "transaction_per_hash": 10,
+    "tick_per_second": 160,
+    "tick_per_slot": 64,
+    "time_out_ticks": 640,
+    "block_stack_size": 32,
+    "parent_connection": {
+        "address": "address1",
+        "ip": "127.0.0.1",
+        "port": 3001,
+        "type": "Validator"
+    },
+    "number_of_validate_poh_routine": 10,
+    "account_db_path": "./db/account"
+}

@@ -1,0 +1,17 @@
+{
+    "address": "address13",
+    "ip": "127.0.0.1",
+    "port": 3013,
+    "node_type": "Node",
+    "transaction_per_hash": 10,
+    "hash_per_second": 100,
+    "tick_per_second": 50,
+    "tick_per_slot": 50,
+    "parent_connection": {
+        "address": "address3",
+        "ip": "127.0.0.1",
+        "port": 3003,
+        "type": "Validator"
+    },
+    "number_of_validate_poh_routine": 5
+}

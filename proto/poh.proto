@@ -1,0 +1,53 @@
+syntax = "proto3";
+package poh;
+import "proto/transaction.proto";
+import "proto/accountData.proto";
+
+option go_package = "/proto";
+
+message POHHash {
+    int64 Count = 1;
+    string LastHash = 2;
+    string Hash = 3;
+    repeated  transaction.Transaction  Transactions = 4;
+} 
+
+message POHTick {
+    string From = 1;
+	repeated POHHash Hashes = 2;
+	int64 Count = 3;
+}
+
+message POHBlock {
+    string From = 1;
+	repeated POHTick Ticks = 2;
+	int64 Count = 3;
+    string Type = 4; 
+    POHHash Hash = 5; 
+    repeated POHVote Votes = 6; 
+}
+
+message POHVote {
+    string Hash = 1;
+    string Address = 2;
+    string Sign = 3;
+}
+
+
+message POHVoteResult {
+    string Hash = 1;
+    repeated POHVote Votes = 2; 
+}
+
+message POHValidateTickResult {
+    string From = 1;
+    POHTick Tick = 2;
+    bool Valid = 3;
+    string Sign = 4;
+}
+
+message POHConfirmResult {
+	POHTick LastTick = 1;
+    repeated accountData.AccountData AccountDatas = 2;
+    string MerkelRoot = 3;
+}
