@@ -54,8 +54,10 @@ func (handler *MessageHandler) HandleConnection(conn *Connection) {
 			}
 		}
 		messageLength := uint64(binary.LittleEndian.Uint64(bLength))
+
 		data := make([]byte, messageLength)
 		byteRead, err := conn.TCPConnection.Read(data)
+
 		if err != nil {
 			switch err {
 			case io.EOF:
@@ -66,8 +68,13 @@ func (handler *MessageHandler) HandleConnection(conn *Connection) {
 				return
 			}
 		}
-		if uint64(byteRead) != messageLength {
+		for uint64(byteRead) != messageLength {
 			log.Errorf("Invalid message receive byteRead !=  messageLength %v, %v\n", byteRead, messageLength)
+			appendData := make([]byte, messageLength-uint64(byteRead))
+			conn.TCPConnection.Read(appendData)
+
+			data = append(data[:byteRead], appendData...)
+			byteRead = len(data)
 		}
 
 		message := pb.Message{}
