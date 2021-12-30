@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/syndtr/goleveldb/leveldb"
 	"poh-client.com/config"
 	"poh-client.com/network"
 	pb "poh-client.com/proto"
@@ -19,7 +20,7 @@ func initParentConnections() *network.Connection {
 	return parentConnection
 }
 
-func runServer() *network.Server {
+func runServer(accountDB *leveldb.DB) *network.Server {
 
 	handler := network.MessageHandler{
 		ValidatorConnections: make(map[string]*network.Connection),
@@ -27,6 +28,8 @@ func runServer() *network.Server {
 		LastConfirmedTick: &pb.POHTick{
 			Count: -1000,
 		},
+		CheckingLeaderTickLastHashes: make(map[string]*pb.AccountData),
+		AccountDB:                    accountDB,
 	}
 	server := network.Server{
 		Address:        config.AppConfig.Address,
@@ -41,18 +44,26 @@ func runServer() *network.Server {
 
 func main() {
 	finish := make(chan bool)
+	// db
+	accountDB, err := leveldb.OpenFile(config.AppConfig.AccountDBPath, nil)
+	if err != nil {
+		panic(err)
+	}
+	defer accountDB.Close()
 
-	server := runServer()
+	// runServer(accountDB)
+	server := runServer(accountDB)
 
 	checkedBlock := &pb.CheckedBlock{
 		Transactions: []*pb.Transaction{
 			{
-				Hash:     "Hash",
-				LastHash: "LastHash",
-				From:     "From",
-				To:       "To",
-				Balance:  9000000,
-				Sign:     "Sign",
+				FromAddress: "Hash",
+				ToAddress:   "To",
+				Balance:     9000000,
+				Sign:        "Sign",
+				PreviousData: &pb.Transaction{
+					Hash: "fake hash",
+				},
 			},
 		},
 	}

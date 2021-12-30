@@ -3,10 +3,23 @@ package transaction;
 option go_package = "/proto";
 
 message Transaction {
-    string Hash = 1;
-    string LastHash = 2;
-    string From = 3;
-    string To = 4;
-    int64  Balance = 5;
-    string Sign = 6;
+    string Hash = 1;  // hash của transaction này
+    string FromAddress = 2; // địa chỉ của account tạo transaction 
+    string ToAddress = 3; // địa chỉ của account tạo transaction 
+    string Pubkey = 4; // pubkey của account tạo transaction
+    string Data = 5; // chưa data liên quan đến transaction, nếu là send thì là data để gọi smart contract, nếu là receive thì là data của send transaction (data này được được protobuf marshal thành string)
+    Transaction PreviousData = 6; // transaction trước đó của account tạo ra transaction này (trong này có hash rôi nên mình ko cần thêm field lasthash nữa, trong thông tin previous data  của previous data có thể để null hoặc chỉ cần có hash)
+    double PendingUse = 7;  // số lượng pending mà user muốn thêm vào balance trước khi chuyển. Số tiền chuyển sẽ là PreviousData.Balance + PendingUser - Balance 
+    double Balance = 8;  // số dư sau khi transaction này đươcj thực hiện
+    string Sign = 9; // chữ ký bls được ký bằng private key của account tạo account trên hash của transaction
+}
+
+message HashData {
+    string FromAddress = 1; // địa chỉ của account tạo transaction 
+    string ToAddress = 2; // địa chỉ của account tạo transaction 
+    string Pubkey = 3; // pubkey của account tạo transaction
+    string Data = 4; // chưa data liên quan đến transaction, nếu là send thì là data để gọi smart contract, nếu là receive thì là data của send transaction (data này được được protobuf marshal thành string)
+    string PreviousHash = 5; // hash cuar transaction trước đó
+    double PendingUse = 6;  // số lượng pending mà user muốn thêm vào balance trước khi chuyển. Số tiền chuyển sẽ là PreviousData.Balance + PendingUser - Balance 
+    double Balance = 7;  // số dư sau khi transaction này đươcj thực hiện
 }

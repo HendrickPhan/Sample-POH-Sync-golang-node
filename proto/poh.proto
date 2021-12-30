@@ -1,7 +1,6 @@
 syntax = "proto3";
 package poh;
 import "proto/transaction.proto";
-import "proto/accountData.proto";
 
 option go_package = "/proto";
 
@@ -48,6 +47,5 @@ message POHValidateTickResult {
 
 message POHConfirmResult {
 	POHTick LastTick = 1;
-    repeated accountData.AccountData AccountDatas = 2;
-    string MerkelRoot = 3;
+    repeated  transaction.Transaction  Transactions = 2;
 }

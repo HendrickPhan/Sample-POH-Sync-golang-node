@@ -12,12 +12,15 @@ import (
 	"sync"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/syndtr/goleveldb/leveldb"
 	"google.golang.org/protobuf/proto"
 	"poh-client.com/config"
+	"poh-client.com/controllers"
 	pb "poh-client.com/proto"
 )
 
 type MessageHandler struct {
+	mu                   sync.Mutex
 	ValidatorConnections map[string]*Connection // map address to validator connection
 	NodeConnections      map[string]*Connection // map address to validator connection
 
@@ -25,7 +28,9 @@ type MessageHandler struct {
 	NextLeaderTicks          []*pb.POHTick
 	CurrentLeaderTicks       []*pb.POHTick
 	CurrentLeaderFutureTicks []*pb.POHTick
-	mu                       sync.Mutex
+
+	AccountDB                    *leveldb.DB
+	CheckingLeaderTickLastHashes map[string]*pb.AccountData
 }
 
 func (handler *MessageHandler) OnConnect(conn *Connection) {
@@ -181,6 +186,7 @@ func (handler *MessageHandler) validateTickTransactions(tick *pb.POHTick) bool {
 	for _, hash := range tick.Hashes {
 		for _, transaction := range hash.Transactions {
 			if !handler.validateTransaction(transaction) {
+				log.Info("Transaction Invalid")
 				return false
 			}
 		}
@@ -188,7 +194,43 @@ func (handler *MessageHandler) validateTickTransactions(tick *pb.POHTick) bool {
 	return true
 }
 func (handler *MessageHandler) validateTransaction(transaction *pb.Transaction) bool {
-	// TODO
+	// validate hash
+	hash := controllers.GetTransactionHash(transaction)
+	if hash != transaction.Hash {
+		return false
+	}
+	// validate lastHash
+	lastHash := controllers.GetTransactionHash(transaction.PreviousData)
+	if transaction.PreviousData.Hash != lastHash {
+		return false
+	}
+	if _, ok := handler.CheckingLeaderTickLastHashes[transaction.FromAddress]; !ok {
+		bAccountData, err := handler.AccountDB.Get([]byte(transaction.FromAddress), nil)
+		if err != nil {
+			log.Warn("Account have no data but create send transaction. Address: %v\n", transaction.FromAddress)
+			return false
+		}
+		accountData := &pb.AccountData{}
+		proto.Unmarshal(bAccountData, accountData)
+		handler.CheckingLeaderTickLastHashes[transaction.FromAddress] = accountData
+	}
+	if transaction.PreviousData.Hash != handler.CheckingLeaderTickLastHashes[transaction.FromAddress].LastHash {
+		return false
+	}
+
+	// validate balance
+	if transaction.PendingUse > handler.CheckingLeaderTickLastHashes[transaction.FromAddress].PendingBalance {
+		return false
+	}
+
+	if transaction.Balance < 0 || // balance cannot be < 0
+		transaction.Balance >= transaction.PreviousData.Balance+transaction.PendingUse { // balance after send not be larger or equal transaction.PreviousData.Balance+transaction.PendingUse
+		return false
+	}
+	// update account data so we can continue validate next transaction of this account
+	handler.CheckingLeaderTickLastHashes[transaction.FromAddress].Balance = transaction.Balance
+	handler.CheckingLeaderTickLastHashes[transaction.FromAddress].LastHash = transaction.Hash
+	handler.CheckingLeaderTickLastHashes[transaction.FromAddress].PendingBalance -= transaction.PendingUse
 	return true
 }
 

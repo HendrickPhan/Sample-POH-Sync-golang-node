@@ -5,4 +5,8 @@ option go_package = "/proto";
 message AccountData {
     string Address = 1;
     string LastHash = 2;
+    double Balance = 3;
+    double PendingBalance = 4;
 }
+
+
