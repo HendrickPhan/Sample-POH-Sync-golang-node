@@ -29,8 +29,8 @@ type MessageHandler struct {
 	CurrentLeaderTicks       []*pb.POHTick
 	CurrentLeaderFutureTicks []*pb.POHTick
 
-	AccountDB                    *leveldb.DB
-	CheckingLeaderTickLastHashes map[string]*pb.AccountData
+	AccountDB                         *leveldb.DB
+	CheckingAccountDataFromLeaderTick map[string]*pb.AccountData
 }
 
 func (handler *MessageHandler) OnConnect(conn *Connection) {
@@ -137,6 +137,7 @@ func (handler *MessageHandler) generatePOHHash(transactions []*pb.Transaction, l
 }
 
 func (handler *MessageHandler) validateTickPOH(tick *pb.POHTick) error {
+	log.Infof("HASH LEN %v\n", len(tick.Hashes))
 	validatePOHChan := make(chan bool)
 	exitChan := make(chan bool)
 	for i := 0; i < config.AppConfig.NumberOfValidatePohRoutine; i++ {
@@ -204,7 +205,7 @@ func (handler *MessageHandler) validateTransaction(transaction *pb.Transaction) 
 	if transaction.PreviousData.Hash != lastHash {
 		return false
 	}
-	if _, ok := handler.CheckingLeaderTickLastHashes[transaction.FromAddress]; !ok {
+	if _, ok := handler.CheckingAccountDataFromLeaderTick[transaction.FromAddress]; !ok {
 		bAccountData, err := handler.AccountDB.Get([]byte(transaction.FromAddress), nil)
 		if err != nil {
 			log.Warn("Account have no data but create send transaction. Address: %v\n", transaction.FromAddress)
@@ -212,14 +213,14 @@ func (handler *MessageHandler) validateTransaction(transaction *pb.Transaction) 
 		}
 		accountData := &pb.AccountData{}
 		proto.Unmarshal(bAccountData, accountData)
-		handler.CheckingLeaderTickLastHashes[transaction.FromAddress] = accountData
+		handler.CheckingAccountDataFromLeaderTick[transaction.FromAddress] = accountData
 	}
-	if transaction.PreviousData.Hash != handler.CheckingLeaderTickLastHashes[transaction.FromAddress].LastHash {
+	if transaction.PreviousData.Hash != handler.CheckingAccountDataFromLeaderTick[transaction.FromAddress].LastHash {
 		return false
 	}
 
 	// validate balance
-	if transaction.PendingUse > handler.CheckingLeaderTickLastHashes[transaction.FromAddress].PendingBalance {
+	if transaction.PendingUse > handler.CheckingAccountDataFromLeaderTick[transaction.FromAddress].PendingBalance {
 		return false
 	}
 
@@ -228,9 +229,9 @@ func (handler *MessageHandler) validateTransaction(transaction *pb.Transaction) 
 		return false
 	}
 	// update account data so we can continue validate next transaction of this account
-	handler.CheckingLeaderTickLastHashes[transaction.FromAddress].Balance = transaction.Balance
-	handler.CheckingLeaderTickLastHashes[transaction.FromAddress].LastHash = transaction.Hash
-	handler.CheckingLeaderTickLastHashes[transaction.FromAddress].PendingBalance -= transaction.PendingUse
+	handler.CheckingAccountDataFromLeaderTick[transaction.FromAddress].Balance = transaction.Balance
+	handler.CheckingAccountDataFromLeaderTick[transaction.FromAddress].LastHash = transaction.Hash
+	handler.CheckingAccountDataFromLeaderTick[transaction.FromAddress].PendingBalance -= transaction.PendingUse
 	return true
 }
 
@@ -345,17 +346,36 @@ func (handler *MessageHandler) checkFutureTick(conn *Connection) {
 	}
 }
 
+func (handler *MessageHandler) UpdateAccountDB(newAccountDatas map[string]*pb.AccountData) {
+	batch := new(leveldb.Batch)
+	for _, v := range newAccountDatas {
+		b, _ := proto.Marshal(v)
+		batch.Put([]byte(v.Address), b)
+	}
+	err := handler.AccountDB.Write(batch, nil)
+	if err != nil {
+		log.Errorf("Error when update account db %v\n", err)
+	}
+}
+
 func (handler *MessageHandler) handleConfirmResult(conn *Connection, message *pb.Message) {
 	handler.mu.Lock()
 	confirmRs := &pb.POHConfirmResult{}
 	proto.Unmarshal([]byte(message.Body), confirmRs)
-	// sort next leader ticks
-	// TODO: update account data
+
+	// reset data to move on next leader
 	handler.LastConfirmedTick = confirmRs.LastTick
 	handler.CurrentLeaderFutureTicks = handler.NextLeaderTicks
 	handler.CurrentLeaderTicks = []*pb.POHTick{}
 	handler.NextLeaderTicks = []*pb.POHTick{}
 
 	handler.checkFutureTick(conn)
+
+	// clear checkingAccountDataFromLeaderTick cuz already confirm to move on  data from next leader
+	handler.CheckingAccountDataFromLeaderTick = make(map[string]*pb.AccountData)
+
+	// update db
+	handler.UpdateAccountDB(confirmRs.AccountDatas)
+
 	handler.mu.Unlock()
 }

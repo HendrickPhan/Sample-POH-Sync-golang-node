@@ -28,8 +28,8 @@ func runServer(accountDB *leveldb.DB) *network.Server {
 		LastConfirmedTick: &pb.POHTick{
 			Count: -1000,
 		},
-		CheckingLeaderTickLastHashes: make(map[string]*pb.AccountData),
-		AccountDB:                    accountDB,
+		CheckingAccountDataFromLeaderTick: make(map[string]*pb.AccountData),
+		AccountDB:                         accountDB,
 	}
 	server := network.Server{
 		Address:        config.AppConfig.Address,
